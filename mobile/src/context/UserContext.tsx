@@ -16,6 +16,8 @@ export interface UserProfile {
     completedWorkouts: string[];
     streak: number;
     lastWorkoutDate: string | null;
+    waterIntake: number;
+    lastWaterDate: string | null;
     theme: Theme;
 }
 
@@ -27,6 +29,7 @@ interface UserContextType {
     updateProfile: (updates: Partial<UserProfile>) => void;
     addXP: (amount: number) => void;
     completeWorkout: (routineId: string) => void;
+    addWater: (amount: number) => void;
     toggleTheme: () => void;
     logout: () => void;
 }
@@ -44,6 +47,8 @@ const INITIAL_USER: UserProfile = {
     completedWorkouts: [],
     streak: 0,
     lastWorkoutDate: null,
+    waterIntake: 0,
+    lastWaterDate: null,
     theme: 'dark',
 };
 
@@ -116,18 +121,48 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const completeWorkout = (routineId: string) => {
         if (!user) return;
         const today = new Date().toISOString().split('T')[0];
+        const yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterday = yesterdayDate.toISOString().split('T')[0];
 
         setUser((prev) => {
             if (!prev) return null;
 
-            const isNewDay = prev.lastWorkoutDate !== today;
-            const newStreak = isNewDay ? prev.streak + 1 : prev.streak;
+            // If already worked out today, don't update streak
+            if (prev.lastWorkoutDate === today) {
+                return {
+                    ...prev,
+                    completedWorkouts: [...prev.completedWorkouts, routineId],
+                };
+            }
+
+            // Check if streak is consecutive
+            const isConsecutive = prev.lastWorkoutDate === yesterday;
+            const newStreak = isConsecutive ? prev.streak + 1 : 1;
 
             return {
                 ...prev,
                 completedWorkouts: [...prev.completedWorkouts, routineId],
                 lastWorkoutDate: today,
                 streak: newStreak,
+            };
+        });
+    };
+
+    const addWater = (amount: number) => {
+        if (!user) return;
+        const today = new Date().toISOString().split('T')[0];
+
+        setUser((prev) => {
+            if (!prev) return null;
+
+            const isNewDay = prev.lastWaterDate !== today;
+            const currentIntake = isNewDay ? 0 : (prev.waterIntake || 0);
+
+            return {
+                ...prev,
+                waterIntake: currentIntake + amount,
+                lastWaterDate: today,
             };
         });
     };
@@ -145,6 +180,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             updateProfile,
             addXP,
             completeWorkout,
+            addWater,
             toggleTheme,
             logout
         }}>

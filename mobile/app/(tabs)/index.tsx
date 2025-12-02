@@ -4,7 +4,11 @@ import { styled } from 'nativewind';
 import { useUser } from '../../src/context/UserContext';
 import { ROUTINES } from '../../src/data/routines';
 import { getStreakPhase } from '../../src/utils/streakUtils';
-import { Flame, Play, Calendar } from 'lucide-react-native';
+import { calculateIdealWeight } from '../../src/utils/nutritionUtils';
+import { registerForPushNotificationsAsync, scheduleWaterReminders } from '../../src/utils/notificationUtils';
+import WaterBottle from '../../src/components/WaterBottle';
+import { Flame, Play, Calendar, Plus, Droplets } from 'lucide-react-native';
+import { useEffect } from 'react';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -12,7 +16,12 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledScrollView = styled(ScrollView);
 
 export default function Dashboard() {
-    const { user, theme } = useUser();
+    const { user, theme, addWater } = useUser();
+
+    useEffect(() => {
+        registerForPushNotificationsAsync();
+        scheduleWaterReminders();
+    }, []);
 
     if (!user) {
         router.replace('/');
@@ -20,10 +29,23 @@ export default function Dashboard() {
     }
 
     const streakPhase = getStreakPhase(user.streak);
-    const recommendedRoutine = ROUTINES.find(r => r.level === user.level) || ROUTINES[0];
+    const today = new Date().toISOString().split('T')[0];
+    const seed = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const randomValue = Math.sin(seed) * 10000;
+    const deterministicRandom = randomValue - Math.floor(randomValue);
+
+    const levelRoutines = ROUTINES.filter(r => r.level === user.level);
+    const recommendedRoutine = levelRoutines[Math.floor(deterministicRandom * levelRoutines.length)] || ROUTINES[0];
     const xpForNextLevel = 1000;
     const progress = (user.xp % xpForNextLevel) / xpForNextLevel * 100;
     const currentLevelNum = Math.floor(user.xp / xpForNextLevel) + 1;
+
+    // Weight Logic
+    const idealWeight = calculateIdealWeight(user.height, user.gender);
+    const isWeightLoss = user.weight > idealWeight.max;
+    const targetWeight = isWeightLoss ? idealWeight.max : idealWeight.min;
+    const weightDiff = Math.abs(user.weight - targetWeight);
+    const weightProgress = Math.min(100, Math.max(0, ((user.weight - idealWeight.max) / (user.weight - idealWeight.min)) * 100));
 
     const bgColor = theme === 'dark' ? 'bg-slate-950' : 'bg-white';
     const textColor = theme === 'dark' ? 'text-white' : 'text-slate-950';
@@ -65,6 +87,48 @@ export default function Dashboard() {
                     <StyledText className={`${secondaryTextColor} text-xs mt-2 text-right`}>
                         {Math.round(xpForNextLevel - (user.xp % xpForNextLevel))} XP para el siguiente nivel
                     </StyledText>
+                </StyledView>
+
+                {/* Weight & Water Row */}
+                <StyledView className="flex-row space-x-4">
+                    {/* Weight Card */}
+                    <StyledView className={`flex-1 ${cardBg} p-4 rounded-3xl border ${borderColor} justify-between`}>
+                        <StyledView>
+                            <StyledText className={`${secondaryTextColor} text-xs font-bold uppercase mb-2`}>Peso Ideal</StyledText>
+                            <StyledText className={`${textColor} text-xl font-bold`}>{user.weight} kg</StyledText>
+                            <StyledText className="text-slate-500 text-xs mb-3">Meta: {targetWeight} kg</StyledText>
+                        </StyledView>
+
+                        <StyledView>
+                            <StyledView className="h-2 bg-slate-800 rounded-full overflow-hidden mb-1">
+                                <StyledView
+                                    className="h-full bg-emerald-500"
+                                    style={{ width: `${isWeightLoss ? 60 : 40}%` }} // Simplified visual
+                                />
+                            </StyledView>
+                            <StyledText className="text-emerald-500 text-xs font-bold">
+                                {isWeightLoss ? `-${weightDiff.toFixed(1)} kg` : 'En rango'}
+                            </StyledText>
+                        </StyledView>
+                    </StyledView>
+
+                    {/* Water Tracker */}
+                    <StyledView className={`flex-1 ${cardBg} p-4 rounded-3xl border ${borderColor} items-center`}>
+                        <StyledView className="flex-row items-center mb-2 w-full justify-between">
+                            <StyledText className={`${secondaryTextColor} text-xs font-bold uppercase`}>Agua</StyledText>
+                            <Droplets size={14} color="#3b82f6" />
+                        </StyledView>
+
+                        <WaterBottle current={user.waterIntake || 0} goal={2500} />
+
+                        <StyledTouchableOpacity
+                            onPress={() => addWater(250)}
+                            className="mt-3 bg-blue-500/20 px-3 py-2 rounded-full flex-row items-center w-full justify-center"
+                        >
+                            <Plus size={14} color="#3b82f6" />
+                            <StyledText className="text-blue-400 text-xs font-bold ml-1">+250ml</StyledText>
+                        </StyledTouchableOpacity>
+                    </StyledView>
                 </StyledView>
 
                 {/* Daily Pick */}
