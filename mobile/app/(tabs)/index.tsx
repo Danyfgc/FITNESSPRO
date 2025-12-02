@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { styled } from 'nativewind';
 import { useUser } from '../../src/context/UserContext';
 import { ROUTINES } from '../../src/data/routines';
+import { getStreakPhase } from '../../src/utils/streakUtils';
 import { Flame, Play, Calendar } from 'lucide-react-native';
 
 const StyledView = styled(View);
@@ -18,6 +19,7 @@ export default function Dashboard() {
         return null;
     }
 
+    const streakPhase = getStreakPhase(user.streak);
     const recommendedRoutine = ROUTINES.find(r => r.level === user.level) || ROUTINES[0];
     const xpForNextLevel = 1000;
     const progress = (user.xp % xpForNextLevel) / xpForNextLevel * 100;
@@ -38,10 +40,13 @@ export default function Dashboard() {
                         <StyledText className={`${secondaryTextColor} text-sm`}>Bienvenido de nuevo,</StyledText>
                         <StyledText className={`${textColor} text-3xl font-bold`}>{user.name}</StyledText>
                     </StyledView>
-                    <StyledView className="flex-row items-center bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20">
-                        <Flame size={16} color="#f97316" fill="#f97316" />
-                        <StyledText className="text-orange-500 font-bold text-sm ml-1">{user.streak}</StyledText>
-                    </StyledView>
+                    <StyledTouchableOpacity
+                        onPress={() => router.push('/streak')}
+                        className={`flex-row items-center ${streakPhase.bgColor} px-3 py-1 rounded-full border ${streakPhase.borderColor}`}
+                    >
+                        <Flame size={16} color={streakPhase.color} fill={streakPhase.color} />
+                        <StyledText className={`${streakPhase.textColor} font-bold text-sm ml-1`}>{user.streak}</StyledText>
+                    </StyledTouchableOpacity>
                 </StyledView>
 
                 {/* Level Card */}

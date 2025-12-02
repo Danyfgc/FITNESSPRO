@@ -319,7 +319,11 @@ export default function WorkoutPlayer() {
 
                     <StyledTouchableOpacity
                         onPress={handleNext}
-                        className="bg-blue-600 flex-1 mx-4 py-4 rounded-2xl flex-row items-center justify-center"
+                        disabled={timeLeft > 0}
+                        className={clsx(
+                            "bg-blue-600 flex-1 mx-4 py-4 rounded-2xl flex-row items-center justify-center",
+                            timeLeft > 0 && "opacity-50 bg-slate-700"
+                        )}
                     >
                         <StyledText className="text-white font-bold text-lg mr-2">
                             {canFinish ? 'Finalizar Rutina' : 'Siguiente'}
