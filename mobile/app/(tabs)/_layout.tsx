@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Dumbbell, User, Utensils } from 'lucide-react-native';
+import { Home, Dumbbell, User, Utensils, TrendingUp } from 'lucide-react-native';
 
 export default function TabsLayout() {
     return (
@@ -36,6 +36,13 @@ export default function TabsLayout() {
                 options={{
                     title: 'Nutrición',
                     tabBarIcon: ({ color, size }) => <Utensils size={size} color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="stats"
+                options={{
+                    title: 'Estadísticas',
+                    tabBarIcon: ({ color, size }) => <TrendingUp size={size} color={color} />,
                 }}
             />
             <Tabs.Screen

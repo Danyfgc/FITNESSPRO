@@ -7,8 +7,9 @@ import { getStreakPhase } from '../../src/utils/streakUtils';
 import { calculateIdealWeight } from '../../src/utils/nutritionUtils';
 import { registerForPushNotificationsAsync, scheduleWaterReminders } from '../../src/utils/notificationUtils';
 import WaterBottle from '../../src/components/WaterBottle';
-import { Flame, Play, Calendar, Plus, Droplets } from 'lucide-react-native';
-import { useEffect } from 'react';
+import WeightUpdateModal from '../../src/components/WeightUpdateModal';
+import { Flame, Play, Calendar, Plus, Droplets, Crown } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -16,12 +17,26 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledScrollView = styled(ScrollView);
 
 export default function Dashboard() {
-    const { user, theme, addWater } = useUser();
+    const { user, theme, addWater, updateWeight } = useUser();
+    const [showWeightModal, setShowWeightModal] = useState(false);
 
     useEffect(() => {
         registerForPushNotificationsAsync();
         scheduleWaterReminders();
-    }, []);
+
+        // Check if 7 days have passed since last weight update
+        if (user && user.lastWeightUpdate) {
+            const lastUpdate = new Date(user.lastWeightUpdate);
+            const today = new Date();
+            const daysDiff = Math.floor((today.getTime() - lastUpdate.getTime()) / (1000 * 3600 * 24));
+            if (daysDiff >= 7) {
+                setShowWeightModal(true);
+            }
+        } else if (user && !user.lastWeightUpdate) {
+            // First time setup, don't show modal immediately
+            // Will be prompted after 7 days
+        }
+    }, [user]);
 
     if (!user) {
         router.replace('/');
@@ -43,6 +58,7 @@ export default function Dashboard() {
     // Weight Logic
     const idealWeight = calculateIdealWeight(user.height, user.gender);
     const isWeightLoss = user.weight > idealWeight.max;
+    const isInIdealRange = user.weight >= idealWeight.min && user.weight <= idealWeight.max;
     const targetWeight = isWeightLoss ? idealWeight.max : idealWeight.min;
     const weightDiff = Math.abs(user.weight - targetWeight);
     const weightProgress = Math.min(100, Math.max(0, ((user.weight - idealWeight.max) / (user.weight - idealWeight.min)) * 100));
@@ -60,7 +76,12 @@ export default function Dashboard() {
                 <StyledView className="flex-row justify-between items-start pt-12">
                     <StyledView>
                         <StyledText className={`${secondaryTextColor} text-sm`}>Bienvenido de nuevo,</StyledText>
-                        <StyledText className={`${textColor} text-3xl font-bold`}>{user.name}</StyledText>
+                        <StyledView className="flex-row items-center">
+                            <StyledText className={`${textColor} text-3xl font-bold`}>{user.name}</StyledText>
+                            {isInIdealRange && (
+                                <Crown size={24} color="#fbbf24" fill="#fbbf24" style={{ marginLeft: 8 }} />
+                            )}
+                        </StyledView>
                     </StyledView>
                     <StyledTouchableOpacity
                         onPress={() => router.push('/streak')}
@@ -165,6 +186,17 @@ export default function Dashboard() {
                     </StyledTouchableOpacity>
                 </StyledView>
             </StyledView>
+
+            {/* Weight Update Modal */}
+            <WeightUpdateModal
+                visible={showWeightModal}
+                currentWeight={user.weight}
+                onClose={() => setShowWeightModal(false)}
+                onSave={(newWeight) => {
+                    updateWeight(newWeight);
+                    setShowWeightModal(false);
+                }}
+            />
         </StyledScrollView>
     );
 }

@@ -3,7 +3,7 @@ import { styled } from 'nativewind';
 import { useUser } from '../../src/context/UserContext';
 import { calculateIdealWeight, calculateDailyCalories, generateDailyPlan } from '../../src/utils/nutritionUtils';
 import { useEffect, useState, useRef } from 'react';
-import { Utensils, CheckCircle, Target, Info } from 'lucide-react-native';
+import { Utensils, CheckCircle, Target, Info, Crown, PartyPopper } from 'lucide-react-native';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -12,7 +12,7 @@ const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledAnimatedView = styled(Animated.View);
 
 export default function NutritionScreen() {
-    const { user, theme } = useUser();
+    const { user, theme, updateProfile } = useUser();
     const [mealPlan, setMealPlan] = useState<any[]>([]);
     const [eatenMeals, setEatenMeals] = useState<string[]>([]);
     const progressAnim = useRef(new Animated.Value(0)).current;
@@ -28,8 +28,16 @@ export default function NutritionScreen() {
     // For now, let's assume weight loss goal for simplicity or just show current vs target range.
 
     const isWeightLoss = user.weight > idealWeight.max;
+    const isInIdealRange = user.weight >= idealWeight.min && user.weight <= idealWeight.max;
     const targetWeight = isWeightLoss ? idealWeight.max : idealWeight.min;
     const weightDiff = Math.abs(user.weight - targetWeight);
+
+    // Check if goal is newly achieved
+    useEffect(() => {
+        if (isInIdealRange && !user.goalAchieved) {
+            updateProfile({ goalAchieved: true });
+        }
+    }, [isInIdealRange, user.goalAchieved]);
 
     useEffect(() => {
         setMealPlan(generateDailyPlan(dailyCalories));
@@ -62,6 +70,20 @@ export default function NutritionScreen() {
                     <StyledText className={`${textColor} text-3xl font-bold mb-2`}>Nutrición</StyledText>
                     <StyledText className="text-slate-400">Tu plan personalizado</StyledText>
                 </StyledView>
+
+                {/* Goal Achievement Banner */}
+                {isInIdealRange && (
+                    <StyledView className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 p-6 rounded-3xl border-2 border-amber-500">
+                        <StyledView className="flex-row items-center justify-center mb-2">
+                            <Crown size={32} color="#fbbf24" fill="#fbbf24" />
+                            <PartyPopper size={32} color="#fbbf24" style={{ marginLeft: 8 }} />
+                        </StyledView>
+                        <StyledText className="text-amber-400 text-2xl font-bold text-center mb-2">¡Felicidades!</StyledText>
+                        <StyledText className="text-amber-300 text-center font-medium">
+                            ¡Has alcanzado tu peso ideal! Mantén este excelente progreso.
+                        </StyledText>
+                    </StyledView>
+                )}
 
                 {/* Weight Goal Card */}
                 <StyledView className={`${cardBg} p-6 rounded-3xl border ${borderColor}`}>

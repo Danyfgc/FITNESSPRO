@@ -5,6 +5,11 @@ export type UserLevel = 'beginner' | 'intermediate' | 'advanced';
 export type Gender = 'male' | 'female' | 'other';
 export type Theme = 'dark' | 'light';
 
+export interface HistoryEntry {
+    date: string;
+    value: number;
+}
+
 export interface UserProfile {
     name: string;
     age: number;
@@ -18,6 +23,11 @@ export interface UserProfile {
     lastWorkoutDate: string | null;
     waterIntake: number;
     lastWaterDate: string | null;
+    lastWeightUpdate: string | null;
+    goalAchieved: boolean;
+    workoutHistory: HistoryEntry[];
+    waterHistory: HistoryEntry[];
+    weightHistory: HistoryEntry[];
     theme: Theme;
 }
 
@@ -30,6 +40,7 @@ interface UserContextType {
     addXP: (amount: number) => void;
     completeWorkout: (routineId: string) => void;
     addWater: (amount: number) => void;
+    updateWeight: (newWeight: number) => void;
     toggleTheme: () => void;
     logout: () => void;
 }
@@ -49,6 +60,11 @@ const INITIAL_USER: UserProfile = {
     lastWorkoutDate: null,
     waterIntake: 0,
     lastWaterDate: null,
+    lastWeightUpdate: null,
+    goalAchieved: false,
+    workoutHistory: [],
+    waterHistory: [],
+    weightHistory: [],
     theme: 'dark',
 };
 
@@ -128,11 +144,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser((prev) => {
             if (!prev) return null;
 
+            // Initialize history arrays if they don't exist (for old user profiles)
+            const workoutHistory = prev.workoutHistory || [];
+
+            // Update workout history
+            const existingEntry = workoutHistory.find(e => e.date === today);
+            const updatedHistory = existingEntry
+                ? workoutHistory.map(e => e.date === today ? { ...e, value: e.value + 1 } : e)
+                : [...workoutHistory, { date: today, value: 1 }];
+
             // If already worked out today, don't update streak
             if (prev.lastWorkoutDate === today) {
                 return {
                     ...prev,
                     completedWorkouts: [...prev.completedWorkouts, routineId],
+                    workoutHistory: updatedHistory,
                 };
             }
 
@@ -145,6 +171,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 completedWorkouts: [...prev.completedWorkouts, routineId],
                 lastWorkoutDate: today,
                 streak: newStreak,
+                workoutHistory: updatedHistory,
             };
         });
     };
@@ -158,11 +185,41 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             const isNewDay = prev.lastWaterDate !== today;
             const currentIntake = isNewDay ? 0 : (prev.waterIntake || 0);
+            const newTotal = currentIntake + amount;
+
+            // Initialize history array if it doesn't exist (for old user profiles)
+            const waterHistory = prev.waterHistory || [];
+
+            // Update water history
+            const existingEntry = waterHistory.find(e => e.date === today);
+            const updatedHistory = existingEntry
+                ? waterHistory.map(e => e.date === today ? { ...e, value: newTotal } : e)
+                : [...waterHistory, { date: today, value: newTotal }];
 
             return {
                 ...prev,
-                waterIntake: currentIntake + amount,
+                waterIntake: newTotal,
                 lastWaterDate: today,
+                waterHistory: updatedHistory,
+            };
+        });
+    };
+
+    const updateWeight = (newWeight: number) => {
+        if (!user) return;
+        const today = new Date().toISOString().split('T')[0];
+
+        setUser((prev) => {
+            if (!prev) return null;
+
+            const weightHistory = prev.weightHistory || [];
+            const updatedHistory = [...weightHistory, { date: today, value: newWeight }];
+
+            return {
+                ...prev,
+                weight: newWeight,
+                lastWeightUpdate: today,
+                weightHistory: updatedHistory,
             };
         });
     };
@@ -181,6 +238,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             addXP,
             completeWorkout,
             addWater,
+            updateWeight,
             toggleTheme,
             logout
         }}>

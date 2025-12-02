@@ -13,28 +13,28 @@ interface WaterBottleProps {
 
 export default function WaterBottle({ current, goal }: WaterBottleProps) {
     const fillAnim = useRef(new Animated.Value(0)).current;
+    const percentage = Math.min(current / goal, 1); // Cap visual at 100%
+    const isGoalReached = current >= goal;
 
     useEffect(() => {
-        const percentage = Math.min(Math.max(current / goal, 0), 1);
-
         Animated.timing(fillAnim, {
             toValue: percentage,
             duration: 1000,
             easing: Easing.out(Easing.cubic),
-            useNativeDriver: false, // width/height changes not supported by native driver
+            useNativeDriver: false,
         }).start();
     }, [current, goal]);
 
     return (
         <StyledView className="items-center justify-center">
             {/* Bottle Shape */}
-            <StyledView className="w-24 h-40 bg-slate-800/50 rounded-3xl border-4 border-slate-600 overflow-hidden relative">
+            <StyledView className={`w-24 h-40 ${isGoalReached ? 'bg-emerald-900/30' : 'bg-slate-800/50'} rounded-3xl border-4 ${isGoalReached ? 'border-emerald-600' : 'border-slate-600'} overflow-hidden relative`}>
                 {/* Cap */}
-                <StyledView className="absolute -top-1 left-1/2 -ml-4 w-8 h-4 bg-slate-500 rounded-t-lg" />
+                <StyledView className={`absolute -top-1 left-1/2 -ml-4 w-8 h-4 ${isGoalReached ? 'bg-emerald-500' : 'bg-slate-500'} rounded-t-lg`} />
 
                 {/* Water */}
                 <StyledAnimatedView
-                    className="absolute bottom-0 left-0 right-0 bg-blue-500/80"
+                    className={`absolute bottom-0 left-0 right-0 ${isGoalReached ? 'bg-emerald-500/90' : 'bg-blue-500/80'}`}
                     style={{
                         height: fillAnim.interpolate({
                             inputRange: [0, 1],
@@ -53,10 +53,19 @@ export default function WaterBottle({ current, goal }: WaterBottleProps) {
 
             {/* Text Overlay */}
             <StyledView className="absolute">
-                <StyledText className="text-white font-bold text-lg shadow-lg">
-                    {Math.round(current / 100) / 10}L
+                <StyledText className={`${isGoalReached ? 'text-emerald-400' : 'text-white'} font-bold text-lg shadow-lg`}>
+                    {(current / 1000).toFixed(1)}L
                 </StyledText>
             </StyledView>
+
+            {/* Overflow Indicator */}
+            {current > goal && (
+                <StyledView className="mt-1">
+                    <StyledText className="text-emerald-400 text-xs font-bold">
+                        +{((current - goal) / 1000).toFixed(1)}L extra
+                    </StyledText>
+                </StyledView>
+            )}
         </StyledView>
     );
 }
